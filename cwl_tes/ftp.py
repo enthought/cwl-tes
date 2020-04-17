@@ -19,6 +19,11 @@ from cwltool.stdfsaccess import StdFsAccess
 from cwltool.loghandler import _logger
 
 
+SECURE_FTP_PROTOCOLS = ("ftps", "sftp")
+OPEN_FTP_PROTOCOLS = ("ftp", )
+FTP_PROTOCOLS = SECURE_FTP_PROTOCOLS + OPEN_FTP_PROTOCOLS
+
+
 def abspath(src, basedir):  # type: (Text, Text) -> Text
     """http(s):, file:, ftp:, and plain path aware absolute path"""
     scheme = urllib.parse.urlparse(src).scheme
@@ -55,7 +60,7 @@ class FtpFsAccess(StdFsAccess):
         parse = urllib.parse.urlparse(url)
         user = parse.username
         passwd = parse.password
-        host = parse.netloc
+        host = parse.hostname
         path = parse.path
         if parse.scheme == 'ftp':
             if not user and self.netrc:
@@ -69,12 +74,18 @@ class FtpFsAccess(StdFsAccess):
 
     def _connect(self, url):  # type: (Text) -> Optional[ftplib.FTP]
         parse = urllib.parse.urlparse(url)
-        if parse.scheme == 'ftp':
+        protocol = parse.scheme
+        if protocol in FTP_PROTOCOLS:
             host, user, passwd, _ = self._parse_url(url)
             if (host, user, passwd) in self.cache:
                 if self.cache[(host, user, passwd)].pwd():
                     return self.cache[(host, user, passwd)]
-            ftp = ftplib.FTP_TLS()
+            if protocol in SECURE_FTP_PROTOCOLS:
+                ftp = ftplib.FTP_TLS()
+            elif protocol in OPEN_FTP_PROTOCOLS:
+                ftp = ftplib.FTP()
+            else:
+                logging.error(f"Did not recognize protocol {protocol}")
             ftp.set_debuglevel(1 if _logger.isEnabledFor(logging.DEBUG) else 0)
             ftp.connect(host)
             ftp.login(user, passwd)
