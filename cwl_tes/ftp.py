@@ -210,8 +210,12 @@ class FtpFsAccess(StdFsAccess):
     def listdir(self, fn):  # type: (Text) -> List[Text]
         ftp = self._connect(fn)
         if ftp:
-            host, _, _, path = self._parse_url(fn)
-            return ["ftp://{}/{}".format(host, x) for x in ftp.nlst(path)]
+            host, username, passwd, path = self._parse_url(fn)
+            if username != "anonymous":
+                template = "ftp://{}:{}@{}/{}"
+            else:
+                template = "ftp://{}/{}"
+            return [template.format(host, username, passwd, x) for x in ftp.nlst(path)]
         return super(FtpFsAccess, self).listdir(fn)
 
     def join(self, path, *paths):  # type: (Text, *Text) -> Text
