@@ -212,10 +212,11 @@ class FtpFsAccess(StdFsAccess):
         if ftp:
             host, username, passwd, path = self._parse_url(fn)
             if username != "anonymous":
-                template = "ftp://{}:{}@{}/{}"
+                template = "ftp://{un}:{pw}@{0}/{1}"
             else:
-                template = "ftp://{}/{}"
-            return [template.format(host, username, passwd, x) for x in ftp.nlst(path)]
+                template = "ftp://{0}/{1}"
+            return [template.format(host, item, un=username, pw=passwd)
+                    for item in ftp.nlst(path)]
         return super(FtpFsAccess, self).listdir(fn)
 
     def join(self, path, *paths):  # type: (Text, *Text) -> Text
