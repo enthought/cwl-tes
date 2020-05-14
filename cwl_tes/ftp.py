@@ -148,9 +148,13 @@ class FtpFsAccess(StdFsAccess):
         if not fn.startswith("ftp:"):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
+            ftp = self._connect(fn)
             host, user, passwd, path = self._parse_url(fn)
-            handle = urllib.request.urlopen(
-                "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
+            try:
+                return ftp
+            except ftplib.all_errors:
+                handle = urllib.request.urlopen(
+                    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
             if PY2:
                 return contextlib.closing(handle)
             return handle
