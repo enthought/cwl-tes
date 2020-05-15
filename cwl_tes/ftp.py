@@ -14,6 +14,7 @@ from six import PY2
 from six.moves import urllib
 from schema_salad.ref_resolver import uri_file_path
 from typing import Tuple, Optional
+from tempfile import NamedTemporaryFile
 
 from cwltool.stdfsaccess import StdFsAccess
 from cwltool.loghandler import _logger
@@ -148,9 +149,14 @@ class FtpFsAccess(StdFsAccess):
         if not fn.startswith("ftp:"):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
-            host, user, passwd, path = self._parse_url(fn)
-            handle = urllib.request.urlopen(
-                "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
+            #host, user, passwd, path = self._parse_url(fn)
+            #handle = urllib.request.urlopen(
+            #    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
+            ftp = self._connect(fn)
+            with NamedTemporaryFile(mode='wb', delete=False) as dest:
+                ftp.retrbinary("RETR {}".format(self._parse_url(fn)[3]),
+                           dest.write, 1024)
+                temp_fname = dest.name
             if PY2:
                 return contextlib.closing(handle)
             return handle
