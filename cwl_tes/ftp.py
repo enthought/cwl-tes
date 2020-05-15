@@ -246,3 +246,8 @@ class FtpFsAccess(StdFsAccess):
         """FtpFsAccess specific method to upload a file to the given URL."""
         ftp = self._connect(url)
         ftp.storbinary("STOR {}".format(self._parse_url(url)[3]), file_handle)
+
+    def download(self, file_handle, url):
+        """FtpFsAccess specific method to download a file to the given URL."""
+        ftp = self._connect(url)
+        ftp.retrbinary("RETR {}".format(self._parse_url(url)[3]), file_handle.write, 1024)
