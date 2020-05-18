@@ -37,7 +37,7 @@ def abspath(src, basedir):  # type: (Text, Text) -> Text
 
 class FtpFsAccess(StdFsAccess):
     """FTP access with upload."""
-    def __init__(self, basedir, cache=None, insecure=False):  # type: (Text) -> None
+    def __init__(self, basedir, cache=None, insecure=False):  # t:(Text)->None
         super(FtpFsAccess, self).__init__(basedir)
         self.cache = cache or {}
         self.netrc = None
@@ -149,14 +149,16 @@ class FtpFsAccess(StdFsAccess):
         if not fn.startswith("ftp:"):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
-            #host, user, passwd, path = self._parse_url(fn)
-            #handle = urllib.request.urlopen(
+            # host, user, passwd, path = self._parse_url(fn)
+            # handle = urllib.request.urlopen(
             #    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
             ftp = self._connect(fn)
             with NamedTemporaryFile(mode='wb', delete=False) as dest:
                 ftp.retrbinary("RETR {}".format(self._parse_url(fn)[3]),
-                           dest.write, 1024)
+                               dest.write, 1024)
                 temp_fname = dest.name
+            # Return a file handle in read mode
+            handle = open(temp_fname, mode)
             if PY2:
                 return contextlib.closing(handle)
             return handle
@@ -256,4 +258,5 @@ class FtpFsAccess(StdFsAccess):
     def download(self, file_handle, url):
         """FtpFsAccess specific method to download a file to the given URL."""
         ftp = self._connect(url)
-        ftp.retrbinary("RETR {}".format(self._parse_url(url)[3]), file_handle.write, 1024)
+        ftp.retrbinary("RETR {}".format(self._parse_url(url)[3]),
+                       file_handle.write, 1024)
