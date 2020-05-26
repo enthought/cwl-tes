@@ -10,7 +10,6 @@ from builtins import str
 import shutil
 import functools
 import uuid
-from tempfile import NamedTemporaryFile
 from pprint import pformat
 from typing import (Any, Callable, Dict, List, MutableMapping, MutableSequence,
                     Optional, Union)

@@ -45,7 +45,9 @@ class FTP_TLS(ftplib.FTP_TLS):
 
     def makepasv(self):
         if self.epsv:
-            host, port = ftplib.parse229(self.sendcmd('EPSV'), self.sock.getpeername())
+            host, port = ftplib.parse229(
+                self.sendcmd('EPSV'), self.sock.getpeername()
+            )
 
             return host, port
 
@@ -55,7 +57,8 @@ class FTP_TLS(ftplib.FTP_TLS):
 
 class FtpFsAccess(StdFsAccess):
     """FTP access with upload."""
-    def __init__(self, basedir, cache=None, insecure=False):  # type: (Text) -> None
+    def __init__(self, basedir, cache=None, insecure=False):
+        # type: (Text) -> None
         super(FtpFsAccess, self).__init__(basedir)
         self.cache = cache or {}
         self.netrc = None
@@ -175,7 +178,7 @@ class FtpFsAccess(StdFsAccess):
             ftp = self._connect(fn)
             with NamedTemporaryFile(mode='wb', delete=False) as dest:
                 ftp.retrbinary("RETR {}".format(self._parse_url(fn)[3]),
-                           dest.write, 1024)
+                               dest.write, 1024)
                 temp_fname = dest.name
             # Return a file handle in read mode
             handle = open(temp_fname, mode)
