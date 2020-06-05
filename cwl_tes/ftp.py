@@ -235,21 +235,15 @@ class FtpFsAccess(StdFsAccess):
         return os.path.realpath(path)
 
     def size(self, fn):
-        ftp = self._connect(fn)
-        if ftp:
-            host, user, passwd, path = self._parse_url(fn)
-            try:
-                return ftp.size(path)
-            except ftplib.all_errors:
-                handle = urllib.request.urlopen(
-                    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
-                info = handle.info()
-                handle.close()
-                if 'Content-length' in info:
-                    return int(info['Content-length'])
-                return None
-
-        return super(FtpFsAccess, self).size(fn)
+        host, user, passwd, path = self._parse_url(fn)
+        url = "ftp://{}:{}@{}/{}".format(user, passwd, host, path)
+        try:
+            c = pycurl.Curl()
+            c.setopt(c.URL, url)
+            c.perform()
+            return int(c.getinfo(c.CONTENT_LENGTH_DOWNLOAD))
+        except:
+            return super(FtpFsAccess, self).size(fn)
 
     def upload(self, file_handle, url):
         """FtpFsAccess specific method to upload a file to the given URL."""
