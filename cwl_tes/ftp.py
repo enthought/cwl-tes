@@ -147,17 +147,24 @@ class FtpFsAccess(StdFsAccess):
         return results
 
     def open(self, fn, mode):
+        print("***pycurl open***")
         if not fn.startswith("ftp:"):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
-            # host, user, passwd, path = self._parse_url(fn)
-            # handle = urllib.request.urlopen(
-            #    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
-            ftp = self._connect(fn)
+            host, user, passwd, path = self._parse_url(fn)
+            url = "ftp://{}:{}@{}/{}".format(user, passwd, host, path)
+            # ftp = self._connect(fn)
             with NamedTemporaryFile(mode='wb', delete=False) as dest:
-                ftp.retrbinary("RETR {}".format(self._parse_url(fn)[3]),
-                               dest.write, 1024)
+                c = pycurl.Curl()
+                c.setopt(c.URL, url)
+                c.setopt(c.WRITEDATA, dest)
+                c.perform()
+                response_code = c.getinfo(c.RESPONSE_CODE)
+                if not (200 <= response_code <= 299):
+                    print(f"There was a problem downloading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+                c.close()
                 temp_fname = dest.name
+
             # Return a file handle in read mode
             handle = open(temp_fname, mode)
             if PY2:
