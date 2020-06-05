@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import contextlib
 import fnmatch
 import ftplib
+import pycurl
 import logging
 import netrc
 import glob
@@ -252,11 +253,24 @@ class FtpFsAccess(StdFsAccess):
 
     def upload(self, file_handle, url):
         """FtpFsAccess specific method to upload a file to the given URL."""
-        ftp = self._connect(url)
-        ftp.storbinary("STOR {}".format(self._parse_url(url)[3]), file_handle)
+        c = pycurl.Curl()
+        c.setopt(pycurl.URL, url)
+        c.setopt(pycurl.VERBOSE, 1)
+        c.setopt(pycurl.INFILE, file_handle)
+        c.setopt(pycurl.UPLOAD, 1)
+        c.perform()
+        response_code = c.getinfo(c.RESPONSE_CODE)
+        if not (200 <= response_code <= 299):
+            print(f"There was a problem uploading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+        c.close()
 
     def download(self, file_handle, url):
         """FtpFsAccess specific method to download a file to the given URL."""
-        ftp = self._connect(url)
-        ftp.retrbinary("RETR {}".format(self._parse_url(url)[3]),
-                       file_handle.write, 1024)
+        c = pycurl.Curl()
+        c.setopt(c.URL, url)
+        c.setopt(c.WRITEDATA, file_handle)
+        c.perform()
+        response_code = c.getinfo(c.RESPONSE_CODE)
+        if not (200 <= response_code <= 299):
+            print(f"There was a problem downloading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+        c.close()
