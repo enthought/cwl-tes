@@ -147,7 +147,6 @@ class FtpFsAccess(StdFsAccess):
         return results
 
     def open(self, fn, mode):
-        print("***pycurl open***")
         if not fn.startswith("ftp:"):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
@@ -161,7 +160,8 @@ class FtpFsAccess(StdFsAccess):
                 c.perform()
                 response_code = c.getinfo(c.RESPONSE_CODE)
                 if not (200 <= response_code <= 299):
-                    print(f"There was a problem downloading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+                    print("There was a problem downloading " +
+                          f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
                 c.close()
                 temp_fname = dest.name
 
@@ -249,7 +249,7 @@ class FtpFsAccess(StdFsAccess):
             c.setopt(c.URL, url)
             c.perform()
             return int(c.getinfo(c.CONTENT_LENGTH_DOWNLOAD))
-        except:
+        except Exception:
             return super(FtpFsAccess, self).size(fn)
 
     def upload(self, file_handle, url):
@@ -262,7 +262,8 @@ class FtpFsAccess(StdFsAccess):
         c.perform()
         response_code = c.getinfo(c.RESPONSE_CODE)
         if not (200 <= response_code <= 299):
-            print(f"There was a problem uploading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+            print("There was a problem uploading " +
+                  f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
         c.close()
 
     def download(self, file_handle, url):
@@ -273,5 +274,6 @@ class FtpFsAccess(StdFsAccess):
         c.perform()
         response_code = c.getinfo(c.RESPONSE_CODE)
         if not (200 <= response_code <= 299):
-            print(f"There was a problem downloading {c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+            print("There was a problem downloading " +
+                  f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
         c.close()
