@@ -16,9 +16,19 @@ from six.moves import urllib
 from schema_salad.ref_resolver import uri_file_path
 from typing import Tuple, Optional
 from tempfile import NamedTemporaryFile
+from contextlib import contextmanager
 
 from cwltool.stdfsaccess import StdFsAccess
 from cwltool.loghandler import _logger
+
+
+@contextmanager
+def use_and_delete(fname, mode='r'):
+    try:
+        with open(fname, mode=mode) as fp:
+            yield fp
+    finally:
+        os.unlink(fname)
 
 
 def abspath(src, basedir):  # type: (Text, Text) -> Text
@@ -166,7 +176,7 @@ class FtpFsAccess(StdFsAccess):
                 temp_fname = dest.name
 
             # Return a file handle in read mode
-            handle = open(temp_fname, mode)
+            handle = use_and_delete(temp_fname, mode)
             if PY2:
                 return contextlib.closing(handle)
             return handle
