@@ -103,6 +103,15 @@ def ftp_upload(base_url, fs_access, cwl_obj):
                 fs_access.upload(source, cwl_obj["location"])
 
 
+def load_public_key(kid):
+    try:
+        with open(kid, 'r') as f:
+            return f.read()
+    except IOError:
+        print("File " + kid + " not found. Using --token-public-key value.")
+        return None
+
+
 def main(args=None):
     """Main entrypoint for cwl-tes."""
     if args is None:
@@ -123,13 +132,18 @@ def main(args=None):
 
     if parsed_args.token:
         try:
+            header = jwt.get_unverified_header(parsed_args.token)
+            token_public_key = load_public_key(header.get('kid'))
+            if token_public_key is None:
+                token_public_key = parsed_args.token_public_key
+
             jwt.decode(
                 parsed_args.token,
-                parsed_args.token_public_key.encode('utf-8')
-                .decode('unicode_escape'),
+                token_public_key.encode('utf-8').decode('unicode_escape'),
                 algorithms=['RS256']
             )
         except Exception:
+            print(Exception)
             raise Exception('Token is not valid')
 
     if parsed_args.quiet:
