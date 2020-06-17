@@ -103,6 +103,14 @@ def ftp_upload(base_url, fs_access, cwl_obj):
                 fs_access.upload(source, cwl_obj["location"])
 
 
+def load_public_key(kid):
+    try:
+        with open(kid, 'r') as f:
+            return f.read()
+    except IOError:
+        raise Exception("Public key file " + kid + " not found.")
+
+
 def main(args=None):
     """Main entrypoint for cwl-tes."""
     if args is None:
@@ -123,10 +131,17 @@ def main(args=None):
 
     if parsed_args.token:
         try:
+            token_public_key = parsed_args.token_public_key
+            if not token_public_key:
+                header = jwt.get_unverified_header(parsed_args.token)
+                if 'kid' in header:
+                    token_public_key = load_public_key(header.get('kid'))
+                else:
+                    raise Exception("Invalid token: has no kid in header.")
+
             jwt.decode(
                 parsed_args.token,
-                parsed_args.token_public_key.encode('utf-8')
-                .decode('unicode_escape'),
+                token_public_key.encode('utf-8').decode('unicode_escape'),
                 algorithms=['RS256']
             )
         except Exception:
@@ -159,7 +174,8 @@ def main(args=None):
             super(CachingFtpFsAccess, self).__init__(
                 basedir, ftp_cache, insecure=insecure)
 
-    ftp_fs_access = CachingFtpFsAccess(os.curdir, insecure=parsed_args.insecure)
+    ftp_fs_access = CachingFtpFsAccess(os.curdir,
+                                       insecure=parsed_args.insecure)
     if parsed_args.remote_storage_url:
         parsed_args.remote_storage_url = ftp_fs_access.join(
             parsed_args.remote_storage_url, str(uuid.uuid4()))

@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import contextlib
 import fnmatch
 import ftplib
+import pycurl
 import logging
 import netrc
 import glob
@@ -14,9 +15,24 @@ from six import PY2
 from six.moves import urllib
 from schema_salad.ref_resolver import uri_file_path
 from typing import Tuple, Optional
+from tempfile import NamedTemporaryFile
+from contextlib import contextmanager
 
 from cwltool.stdfsaccess import StdFsAccess
 from cwltool.loghandler import _logger
+
+
+@contextmanager
+def use_and_delete(fname, mode='r'):
+    '''
+    Acquires resource, suspends operation and yields it to caller. When
+    caller leaves its with-context, remaining resources are cleaned up.
+    '''
+    try:
+        with open(fname, mode=mode) as fp:
+            yield fp
+    finally:
+        os.unlink(fname)
 
 
 def abspath(src, basedir):  # type: (Text, Text) -> Text
@@ -36,7 +52,7 @@ def abspath(src, basedir):  # type: (Text, Text) -> Text
 
 class FtpFsAccess(StdFsAccess):
     """FTP access with upload."""
-    def __init__(self, basedir, cache=None, insecure=False):  # type: (Text) -> None
+    def __init__(self, basedir, cache=None, insecure=False):  # t:(Text)->None
         super(FtpFsAccess, self).__init__(basedir)
         self.cache = cache or {}
         self.netrc = None
@@ -149,8 +165,22 @@ class FtpFsAccess(StdFsAccess):
             return super(FtpFsAccess, self).open(fn, mode)
         if 'r' in mode:
             host, user, passwd, path = self._parse_url(fn)
-            handle = urllib.request.urlopen(
-                "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
+            url = "ftp://{}:{}@{}/{}".format(user, passwd, host, path)
+            # Get FTP file handle by temporarily downloading file
+            with NamedTemporaryFile(mode='wb', delete=False) as dest:
+                c = pycurl.Curl()
+                c.setopt(c.URL, url)
+                c.setopt(c.WRITEDATA, dest)
+                c.perform()
+                response_code = c.getinfo(c.RESPONSE_CODE)
+                if not (200 <= response_code <= 299):
+                    print("There was a problem downloading " +
+                          f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+                c.close()
+                temp_fname = dest.name
+
+            # Return a file handle in read mode
+            handle = use_and_delete(temp_fname, mode)
             if PY2:
                 return contextlib.closing(handle)
             return handle
@@ -226,23 +256,38 @@ class FtpFsAccess(StdFsAccess):
         return os.path.realpath(path)
 
     def size(self, fn):
-        ftp = self._connect(fn)
-        if ftp:
-            host, user, passwd, path = self._parse_url(fn)
-            try:
-                return ftp.size(path)
-            except ftplib.all_errors:
-                handle = urllib.request.urlopen(
-                    "ftp://{}:{}@{}/{}".format(user, passwd, host, path))
-                info = handle.info()
-                handle.close()
-                if 'Content-length' in info:
-                    return int(info['Content-length'])
-                return None
-
-        return super(FtpFsAccess, self).size(fn)
+        host, user, passwd, path = self._parse_url(fn)
+        url = "ftp://{}:{}@{}/{}".format(user, passwd, host, path)
+        try:
+            c = pycurl.Curl()
+            c.setopt(c.URL, url)
+            c.perform()
+            return int(c.getinfo(c.CONTENT_LENGTH_DOWNLOAD))
+        except Exception:
+            return super(FtpFsAccess, self).size(fn)
 
     def upload(self, file_handle, url):
         """FtpFsAccess specific method to upload a file to the given URL."""
-        ftp = self._connect(url)
-        ftp.storbinary("STOR {}".format(self._parse_url(url)[3]), file_handle)
+        c = pycurl.Curl()
+        c.setopt(pycurl.URL, url)
+        c.setopt(pycurl.VERBOSE, 1)
+        c.setopt(pycurl.INFILE, file_handle)
+        c.setopt(pycurl.UPLOAD, 1)
+        c.perform()
+        response_code = c.getinfo(c.RESPONSE_CODE)
+        if not (200 <= response_code <= 299):
+            print("There was a problem uploading " +
+                  f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+        c.close()
+
+    def download(self, file_handle, url):
+        """FtpFsAccess specific method to download a file to the given URL."""
+        c = pycurl.Curl()
+        c.setopt(c.URL, url)
+        c.setopt(c.WRITEDATA, file_handle)
+        c.perform()
+        response_code = c.getinfo(c.RESPONSE_CODE)
+        if not (200 <= response_code <= 299):
+            print("There was a problem downloading " +
+                  f"{c.getinfo(c.EFFECTIVE_URL)} ({response_code})")
+        c.close()
