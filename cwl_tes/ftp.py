@@ -24,6 +24,10 @@ from cwltool.loghandler import _logger
 
 @contextmanager
 def use_and_delete(fname, mode='r'):
+    '''
+    Acquires resource, suspends operation and yields it to caller. When
+    caller leaves its with-context, remaining resources are cleaned up.
+    '''
     try:
         with open(fname, mode=mode) as fp:
             yield fp
@@ -162,7 +166,7 @@ class FtpFsAccess(StdFsAccess):
         if 'r' in mode:
             host, user, passwd, path = self._parse_url(fn)
             url = "ftp://{}:{}@{}/{}".format(user, passwd, host, path)
-            # ftp = self._connect(fn)
+            # Get FTP file handle by temporarily downloading file
             with NamedTemporaryFile(mode='wb', delete=False) as dest:
                 c = pycurl.Curl()
                 c.setopt(c.URL, url)

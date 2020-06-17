@@ -108,8 +108,7 @@ def load_public_key(kid):
         with open(kid, 'r') as f:
             return f.read()
     except IOError:
-        print("File " + kid + " not found. Using --token-public-key value.")
-        return None
+        raise Exception("Public key file " + kid + " not found.")
 
 
 def main(args=None):
@@ -132,10 +131,13 @@ def main(args=None):
 
     if parsed_args.token:
         try:
-            header = jwt.get_unverified_header(parsed_args.token)
-            token_public_key = load_public_key(header.get('kid'))
-            if token_public_key is None:
-                token_public_key = parsed_args.token_public_key
+            token_public_key = parsed_args.token_public_key
+            if not token_public_key:
+                header = jwt.get_unverified_header(parsed_args.token)
+                if 'kid' in header:
+                    token_public_key = load_public_key(header.get('kid'))
+                else:
+                    raise Exception("Invalid token: has no kid in header.")
 
             jwt.decode(
                 parsed_args.token,
@@ -143,7 +145,6 @@ def main(args=None):
                 algorithms=['RS256']
             )
         except Exception:
-            print(Exception)
             raise Exception('Token is not valid')
 
     if parsed_args.quiet:
