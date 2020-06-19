@@ -45,7 +45,9 @@ setup(
         "py-tes>=0.4.0",
         "PyJWT>=1.6.4",
         "requests>=2.14.2",
-        "typing_extensions>=3.7.4"
+        "typing_extensions>=3.7.4",
+        "pycurl>=7.19.5",
+        "cryptography>=1.5.2",
     ],
     extras_require={
         "test": [
