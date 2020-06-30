@@ -261,6 +261,13 @@ class FtpFsAccess(StdFsAccess):
         try:
             c = pycurl.Curl()
             c.setopt(c.URL, url)
+
+            # Tell curl not to echo the downloaded contents to stdout. The
+            # second argument must be a function that accepts a bytes argument,
+            # stores it in a buffer, and returns the number of bytes
+            # written. Since we don't want to keep the contents around, the len
+            # function works perfectly.
+            c.setopt(c.WRITEFUNCTION, len)
             c.perform()
             return int(c.getinfo(c.CONTENT_LENGTH_DOWNLOAD))
         except Exception:
